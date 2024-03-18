@@ -1,0 +1,107 @@
+import sqlite3
+import streamlit as st
+
+# Function to create a database connection
+def create_connection(db_file):
+    conn = None
+    try:
+        conn = sqlite3.connect(db_file)
+        return conn
+    except sqlite3.Error as e:
+        print(e)
+    return conn
+
+# Function to create tables for admins and users
+def create_tables(conn):
+    sql_create_admin_table = """
+        CREATE TABLE IF NOT EXISTS admin (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            username TEXT NOT NULL,
+            password TEXT NOT NULL
+        );
+    """
+    sql_create_user_table = """
+        CREATE TABLE IF NOT EXISTS user (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            username TEXT NOT NULL,
+            password TEXT NOT NULL
+        );
+    """
+    try:
+        c = conn.cursor()
+        c.execute(sql_create_admin_table)
+        c.execute(sql_create_user_table)
+    except sqlite3.Error as e:
+        print(e)
+
+# Function to insert admin credentials
+def insert_admin(conn, username, password):
+    sql = ''' INSERT INTO admin(username, password)
+              VALUES(?,?) '''
+    cur = conn.cursor()
+    cur.execute(sql, (username, password))
+    conn.commit()
+
+# Function to insert user credentials
+def insert_user(conn, username, password):
+    sql = ''' INSERT INTO user(username, password)
+              VALUES(?,?) '''
+    cur = conn.cursor()
+    cur.execute(sql, (username, password))
+    conn.commit()
+
+# Function to authenticate admin
+def authenticate_admin(conn, username, password):
+    cur = conn.cursor()
+    cur.execute("SELECT * FROM admin WHERE username=? AND password=?", (username, password))
+    rows = cur.fetchall()
+    return len(rows) > 0
+
+# Function to authenticate user
+def authenticate_user(conn, username, password):
+    cur = conn.cursor()
+    cur.execute("SELECT * FROM user WHERE username=? AND password=?", (username, password))
+    rows = cur.fetchall()
+    return len(rows) > 0
+
+def main():
+    conn = create_connection("database.db")
+    if conn is not None:
+        create_tables(conn)
+
+        st.title("Admin Signup")
+        admin_username = st.text_input("Admin Username")
+        admin_password = st.text_input("Admin Password", type="password")
+        if st.button("Signup Admin"):
+            insert_admin(conn, admin_username, admin_password)
+            st.success("Admin signup successful")
+
+        st.title("User Signup")
+        user_username = st.text_input("User Username")
+        user_password = st.text_input("User Password", type="password")
+        if st.button("Signup User"):
+            insert_user(conn, user_username, user_password)
+            st.success("User signup successful")
+
+        st.title("Admin Login")
+        login_username = st.text_input("Username")
+        login_password = st.text_input("Password", type="password")
+        if st.button("Login Admin"):
+            if authenticate_admin(conn, login_username, login_password):
+                st.success("Admin login successful")
+            else:
+                st.error("Invalid admin credentials")
+
+        st.title("User Login")
+        login_username = st.text_input("Username")
+        login_password = st.text_input("Password", type="password")
+        if st.button("Login User"):
+            if authenticate_user(conn, login_username, login_password):
+                st.success("User login successful")
+            else:
+                st.error("Invalid user credentials")
+    else:
+        st.error("Cannot establish database connection")
+
+if __name__ == "__main__":
+    main()
